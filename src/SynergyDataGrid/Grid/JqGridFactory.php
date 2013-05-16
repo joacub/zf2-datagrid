@@ -417,7 +417,7 @@
                 $values = array(':select');
 
                 foreach ($list as $item) {
-                    $values[] = $item->id . ':' . $item->title;
+                    $values[] = $item->getId() . ':' . $item->getDisplayName();
                 }
 
                 $values = implode(';', $values);
