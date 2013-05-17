@@ -1,5 +1,5 @@
 {
-    "name": "joacub/synergydatagrid",
+    "name": "synergy/synergydatagrid",
     "description": "Module to display data in grid using the jqGrid javascript plugin",
     "type": "synergy-module",
     "license": "BSD-3-Clause",
@@ -9,7 +9,7 @@
         "zf2",
         "module"
     ],
-    "homepage": "https://github.com/joacub/zf2-datagrid.git",
+    "homepage": "https://github.com/odiaseo/zf2-datagrid.git",
     "authors": [
         {
             "name": "Pele Odiase",
