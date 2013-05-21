@@ -362,6 +362,12 @@
         public function setGridIdentity($entityClassName, $gridId = '')
         {
             $this->setId($gridId);
+            
+            $config = $this->_serviceLocator->get('Config');
+            if(isset($config['jqgrid'][$gridId])) {
+            	$this->_config = array_merge_recursive($config['jqgrid'][$gridId], $this->_config);
+            }
+            
             $this->setEntity($entityClassName);
             self::$gridRegistry[] = $entityClassName;
 
