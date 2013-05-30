@@ -1,11 +1,11 @@
 <?php
 // From within a configuration file
     return array(
-        'view_manager' => array(
-            'template_path_stack' => array(
-                __DIR__ . '/../view',
-            ),
-        ),
+//         'view_manager' => array(
+//             'template_path_stack' => array(
+//                 __DIR__ . '/../view',
+//             ),
+//         ),
 
         'jqgrid'       => array(
             /**
