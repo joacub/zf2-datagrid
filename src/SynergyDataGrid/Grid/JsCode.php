@@ -46,16 +46,17 @@
                 'Actions',
                 array(
                      'name'          => 'myac',
-                     'width'         => 120,
+                     'width'         => 80,
                      'fixed'         => true,
                      'sortable'      => false,
-                     'resize'        => false,
+                     'resizable'        => false,
                      'formatter'     => 'actions',
+                     'search' => false,
+                     'viewable' => false,
                      'formatoptions' => array(
                          'keys'           => false,
-                         'viewbutton'     => $options['nav_grid']['view'],
                          'editbutton'     => $options['nav_grid']['edit'],
-                         'editformbutton' => true, //$this->grid->getAllowEditForm(),
+                         'editformbutton' => $this->grid->getAllowEditForm(),
                          'delbutton'      => $options['nav_grid']['del'],
                          'delOptions'     => array(
                              'afterSubmit' => new Expr("function(response, postdata) {

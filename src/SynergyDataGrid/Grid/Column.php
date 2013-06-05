@@ -5,8 +5,7 @@
     use Doctrine\ORM\PersistentCollection;
     use SynergyDataGrid\Grid\Column\FormatOptions;
     use SynergyDataGrid\Grid\Column\EditRules;
-use Nette\Diagnostics\Debugger;
-				
+
     /**
      * Column class for single grid column implementation
      *
@@ -84,13 +83,13 @@ use Nette\Diagnostics\Debugger;
          *
          * @var string
          */
-        const DEFAULT_TEXT_SIZE = 30;
+        const DEFAULT_TEXT_SIZE = 150;
         /**
          * Default field maximum edit length for "text" editype
          *
          * @var string
          */
-        const DEFAULT_TEXT_MAXLENGTH = 30;
+        const DEFAULT_TEXT_MAXLENGTH = 150;
         /**
          * Default source format for date formatter (for use with integrated datepicker)
          *
@@ -147,7 +146,7 @@ use Nette\Diagnostics\Debugger;
          */
         protected function _setDefaultOptions()
         {
-            $this->setWidth(200);
+            //$this->setWidth(200);
 
             // "editable" option is FALSE by default in jqGrid, but
             // we will change it to TRUE by default,
@@ -212,27 +211,25 @@ use Nette\Diagnostics\Debugger;
         public function cellValue($row)
         {
             $name      = $this->getName();
+            $getter = 'get' . ucfirst($name);
             $cellValue = '';
             if (property_exists($row, $name)) {
-            	
-            	$getter = 'get' . ucfirst($name);
-            	
                 if ($row->{$getter}() instanceof \DateTime) {
                     $cellValue = $row->{$getter}();
+                } elseif($row->{$getter}() instanceof PersistentCollection) {
+                	$cellValue = $row->{$getter}()->count();
                 } elseif (is_object($row->{$getter}())) {
                     $cellValue = $row->{$getter}()->getId();
                 } else {
                     $cellValue = $row->{$getter}();
                 }
-                
             }
             //$cellValue = array_key_exists($this->getName(), $row) ? $row->{$name} : '';
             if ($this->getEdittype() == 'select') {
                 $value = $this->getEditoptions()->getValue();
                 $retv  = htmlentities($cellValue);
-                if ($value) {
-                    //$allPairs = explode(';', $value);
-                    $allPairs = $value;
+                if ($value and $retv) {
+                    $allPairs = explode(';', $value);
                     if (is_array($allPairs) && count($allPairs)) {
                         foreach ($allPairs as $singlePair) {
                             $pair = explode(':', $singlePair);
@@ -253,7 +250,7 @@ use Nette\Diagnostics\Debugger;
             } else {
                 $retv = htmlentities($cellValue);
             }
-            
+
             return $retv;
         }
 

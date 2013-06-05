@@ -3,10 +3,12 @@
 
     use SynergyDataGrid\Grid\Toolbar;
     use Zend\Http\Request;
+    use Zend\Json\Expr;
     use Zend\View\Helper\AbstractHelper;
     use SynergyDataGrid\Grid\JqGridFactory;
     use Zend\Json\Json;
-
+use Nette\Diagnostics\Debugger;
+				
     /**
      * View Helper to render jqGrid control
      *
@@ -35,10 +37,10 @@
             } else {
                 $grid->setActionsColumn($config['add_action_column']);
             }
+            
             $grid->setGridColumns()
                 ->setGridDisplayOptions()
-                ->setAllowEditForm($config['allow_edit_form'])
-                ->setAllowEdit($config['allow_edit']);
+                ->setAllowEditForm($config['allow_form_edit']);
 
 
             $onLoad[] = 'var ' . $grid->getLastSelectVariable() . '; ';
@@ -62,8 +64,9 @@
             $onLoad[] = $grid->getJsCode()->prepareSetColumnsOrderingCookie();
             $grid->reorderColumns();
 
-            $onLoad[] = sprintf('jQuery("#%s").jqGrid(%s);',
-                $grid->getId(), Json::encode($grid->getOptions(), false, array('enableJsonExprFinder' => true)));
+            $onLoad[] = sprintf('var grid = jQuery("#%s");', $grid->getId());
+            $onLoad[] = sprintf('grid.jqGrid(%s);',
+                Json::encode($grid->getOptions(), false, array('enableJsonExprFinder' => true)));
 
             $datePicker = $grid->getDatePicker()->prepareDatepicker();
             $js         = array_merge($js, $datePicker);
@@ -81,8 +84,7 @@
                 $prmSearch = $grid->getNavGrid()->getSearchParameters() ? : new \stdClass();
                 $prmView   = $grid->getNavGrid()->getViewParameters() ? : new \stdClass();
 
-                $jsPager = sprintf('jQuery("#%s").jqGrid("navGrid","#%s",%s,%s,%s,%s,%s,%s)',
-                    $grid->getId(),
+                $jsPager = sprintf('grid.jqGrid("navGrid","#%s",%s,%s,%s,%s,%s,%s)',
                     $grid->getPager(),
                     Json::encode($options, false, array('enableJsonExprFinder' => true)),
                     Json::encode($prmEdit, false, array('enableJsonExprFinder' => true)),
@@ -91,6 +93,14 @@
                     Json::encode($prmSearch, false, array('enableJsonExprFinder' => true)),
                     Json::encode($prmView, false, array('enableJsonExprFinder' => true))
                 );
+
+
+                //display filter toolbar
+                if ($config['filter_toolbar']['enabled']) {
+                    $onLoad[] = sprintf('grid.jqGrid("filterToolbar",%s)',
+                        Json::encode($config['filter_toolbar']['options'], false, array('enableJsonExprFinder' => true))
+                    );
+                }
 
                 $navButtons = $grid->getNavButtons();
 
@@ -125,9 +135,9 @@
             $onLoad[] = $jsPager;
             $html[]   = $htmlPager;
 
+            //setup inline navigation
             if ($grid->getInlineNavEnabled() and $grid->getInlineNav()) {
-                $jsInline = sprintf('jQuery("#%s").jqGrid("inlineNav", "#%s",%s)',
-                    $grid->getId(),
+                $jsInline = sprintf('grid.jqGrid("inlineNav", "#%s",%s)',
                     $grid->getPager(),
                     Json::encode($grid->getInlineNav()->getOptions(), false, array('enableJsonExprFinder' => true))
                 );
@@ -139,33 +149,52 @@
                 }
             }
 
-            if ($grid->toolbar) {
-                $config  = $grid->getConfig();
-                $toolbar = new Toolbar($grid, $config['toolbar_buttons']);
+            //add custom toolbar buttons
+            list($toolbarEnabled, $toolbarPosition) = $grid->toolbar;
+            if ($toolbarEnabled and $config['toolbar_buttons']) {
+
+                if ($toolbarPosition == Toolbar::POSITION_BOTH) {
+                    $toolbars[] = new Toolbar($grid, $config['toolbar_buttons'], Toolbar::POSITION_BOTTOM);
+                    $toolbars[] = new Toolbar($grid, $config['toolbar_buttons'], Toolbar::POSITION_TOP);
+
+                } elseif ($toolbarPosition == Toolbar::POSITION_BOTTOM) {
+                    $toolbars[] = new Toolbar($grid, $config['toolbar_buttons'], Toolbar::POSITION_BOTTOM);
+                } else {
+                    $toolbars[] = new Toolbar($grid, $config['toolbar_buttons'], Toolbar::POSITION_TOP);
+                }
 
                 /** @var $toolbarButton \SynergyDataGrid\Grid\Toolbar\Item */
-                foreach ($toolbar->getItems() as $toolbarButton) {
-                    $onLoad[] = sprintf("jQuery('#%s').append(\"<span id='%s' title='%s' class='toolbar-item'><i class='icon %s'></i></span>\");
+                foreach ($toolbars as $toolbar) {
+                    $toolbarPosition = $toolbar->getPosition();
+                    foreach ($toolbar->getItems() as $toolbarButton) {
+                        $buttonPosition = $toolbarButton->getPosition();
+                        if ($buttonPosition == Toolbar::POSITION_BOTH
+                            or $buttonPosition == $toolbarPosition
+                        ) {
+                            $onLoad[] = sprintf("jQuery('#%s').append(\"<button id='%s' title='%s' class='%s' %s><i class='icon %s'></i></button>\");
                                         jQuery('#%s', '#%s').bind('click', %s);",
-                        $toolbar->getId(),
-                        $toolbarButton->getId(),
-                        $toolbarButton->getTitle(),
-                        $toolbarButton->getIcon(),
-                        $toolbarButton->getId(),
-                        $toolbar->getId(),
-                        Json::encode($toolbarButton->getCallback(), false, array('enableJsonExprFinder' => true))
-                    );
+                                $toolbar->getId(),
+                                $toolbarButton->getId(),
+                                $toolbarButton->getTitle(),
+                                $toolbarButton->getClass(),
+                                $toolbarButton->getAttributes(),
+                                $toolbarButton->getIcon(),
+                                $toolbarButton->getId(),
+                                $toolbar->getId(),
+                                Json::encode($toolbarButton->getCallback(), false, array('enableJsonExprFinder' => true))
+                            );
+
+                            if ($init = $toolbarButton->getOnLoad()) {
+                                $onLoad[] = Json::encode($init, false, array('enableJsonExprFinder' => true));
+                            }
+                        }
+                    }
                 }
             }
 
-            $onLoad[] = sprintf(";jQuery(window).bind('resize', function(){
-                var gw = jQuery('#%s').parents('.grid-data').width();
-                jQuery('#%s').jqGrid('setGridWidth',gw)
-                });
-            ",
-                $grid->getId(),
-                $grid->getId());
-
+            $onLoad   = array_filter($onLoad);
+           // $onLoad[] = ";grid.jqGrid('setGridWidth', grid.parents('.grid-data').width());";
+            $onLoad[] = ";jQuery(window).bind('resize', function(){  var gw = grid.parents('.grid-data').width();  grid.jqGrid('setGridWidth',gw)  });  ";
 
             //$onLoad[] = $grid->getJsCode()->renderActionsFormatter();
 
@@ -186,5 +215,6 @@
             }
             return implode("\n", $html);
         }
+
 
     }
